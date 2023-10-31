@@ -3,6 +3,7 @@ import os
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
+import google.auth
 
 import json
 
@@ -20,17 +21,24 @@ def main():
     api_version = "v3"
     client_secrets_file = "credentials.json"
 
-    # Get credentials and create an API client
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file, scopes)
-    credentials = flow.run_local_server()
+   # Try to load credentials from a file, if they exist
+    credentials = load_credentials()
 
-    save_credentials(credentials)
+    if credentials is None:
+        # Initialize the flow
+        flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+            client_secrets_file, scopes)
+
+        # If no credentials file exists, initiate the OAuth flow
+        credentials = flow.run_local_server()
+
+        # Save the credentials to a file
+        save_credentials(credentials)
 
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, credentials=credentials)
     
-    post(youtube)
+    print(youtube)
 
 def post(youtube):
     """""
@@ -42,6 +50,12 @@ def post(youtube):
 
     print(response)
     """""
+
+
+def load_credentials():
+    if os.path.exists('token.json'):
+        return google.auth.credentials.Credentials.from_authorized_user_info('token.json', scopes)
+    return None
 
 def save_credentials(credentials):
     credentials.to_json()
