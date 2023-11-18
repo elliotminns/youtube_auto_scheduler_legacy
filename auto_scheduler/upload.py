@@ -16,7 +16,7 @@ def upload_short(youtube):
     request = youtube.videos().list(
         part="snippet,contentDetails,statistics",
         chart="mostPopular",
-        regionCode="UK"
+        regionCode="GB"
     )
     response = request.execute()
     print(response)
