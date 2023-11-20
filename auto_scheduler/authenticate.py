@@ -39,16 +39,6 @@ def refresh(credentials):
         return credentials
     else:
         return None
-'''''
-def post(youtube):
-    request = youtube.videos().list(
-        part="snippet,contentDetails,statistics",
-        chart="mostPopular",
-        regionCode="US"
-    )
-    response = request.execute()
-    print(response)
-'''''
     
 def save_credentials(credentials):
     with open('token.json', 'w') as token_file:
