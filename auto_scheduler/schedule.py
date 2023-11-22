@@ -2,9 +2,11 @@
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from upload import upload_short
+from authenticate import credential_check
 
 def job():
-    upload_short()
+    youtube_obj = credential_check()
+    upload_short(youtube_obj)
 
 # Create a scheduler
 scheduler = BlockingScheduler()

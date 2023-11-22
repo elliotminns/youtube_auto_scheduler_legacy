@@ -21,4 +21,5 @@ def file_selector():
    shutil.move(source, destination)
 
    # Return the path of the moved video
-   return destination
+   return destination, video
+
