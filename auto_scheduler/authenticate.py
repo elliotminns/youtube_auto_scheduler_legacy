@@ -7,11 +7,11 @@ from google.auth.transport.requests import Request  # Import Request class
 
 from googleapiclient.http import MediaFileUpload
 
-scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
+scopes = "https://www.googleapis.com/auth/youtube.upload"
 
 api_service_name = "youtube"
 api_version = "v3"
-client_secrets_file = "credentials.json"
+client_secrets_file = "resources/credentials.json"
 
 def is_authorized(credentials):
     return credentials and not credentials.expired
@@ -41,12 +41,12 @@ def refresh(credentials):
         return None
     
 def save_credentials(credentials):
-    with open('token.json', 'w') as token_file:
+    with open('resources/token.json', 'w') as token_file:
         token_file.write(credentials.to_json())
 
 def credential_check():
     try:
-        with open('token.json', 'r') as token_file:
+        with open('resources/token.json', 'r') as token_file:
             credentials_data = json.load(token_file)
         credentials = Credentials.from_authorized_user_info(credentials_data)
         print ('Credentials Found')
