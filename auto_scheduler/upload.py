@@ -24,6 +24,7 @@ def upload_short(youtube):
     e400 = 600
 
     while True:
+        print ('Upload Loop Repeating...')
         try:
             file_location, video = file_selector()
             request = youtube.videos().insert(

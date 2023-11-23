@@ -1,3 +1,4 @@
 pip install google-api-python-client
+pip install --upgrade google-auth-httplib2 google-auth-oauthlib
 pip install APScheduler
 pip install google-cloud-error-reporting --upgrade
