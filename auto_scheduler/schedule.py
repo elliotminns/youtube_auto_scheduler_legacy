@@ -5,8 +5,8 @@ from upload import upload_short
 from authenticate import credential_check
 
 def job():
-    youtube_obj = credential_check()
-    upload_short(youtube_obj)
+    youtube_object = credential_check()
+    upload_short(youtube_object)
 
 # Create a scheduler
 scheduler = BlockingScheduler()

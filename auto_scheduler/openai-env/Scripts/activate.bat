@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\Elliot\Desktop\youtube auto scheduler\youtube_auto_scheduler\openai-env
+set VIRTUAL_ENV=C:\Users\bluch\Desktop\youtube auto scheduler\youtube_auto_scheduler\auto_scheduler\openai-env
 
 if not defined PROMPT set PROMPT=$P$G
 

@@ -68,6 +68,3 @@ def HTTP_error(video, delay):
     destination = os.path.join('C:\\Users\\bluch\\Desktop\\youtube auto scheduler\\youtube_auto_scheduler\\video_content\\sorted_content', video)
     shutil.move(source, destination)
     time.sleep(delay)
-
-youtube_obj = credential_check()
-upload_short(youtube_obj)
