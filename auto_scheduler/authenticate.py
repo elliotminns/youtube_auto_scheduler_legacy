@@ -62,20 +62,11 @@ def credential_check():
     
     if is_authorized(credentials):  # Check if credentials are authorized
         print('Still Authorized')  # Print confirmation message
-        
-        # Build the YouTube API client with the obtained credentials
-        youtube = googleapiclient.discovery.build(
-            api_service_name, api_version, credentials=credentials)
-
-        return youtube  # Return the YouTube API client
+        return credentials  # Return the YouTube API client
     else:
         refreshed_credentials = refresh(credentials)  # Refresh credentials if expired
         if refreshed_credentials and is_authorized(refreshed_credentials):
-            # Build the YouTube API client with the refreshed credentials
-            youtube = googleapiclient.discovery.build(
-                api_service_name, api_version, credentials=credentials)
-
-            return youtube  # Return the YouTube API client
+            return refreshed_credentials  # Return the YouTube API client
         else:
             print('Credentials Expired')  # Print message if credentials are expired
             authorize()  # Authorize access to YouTube API

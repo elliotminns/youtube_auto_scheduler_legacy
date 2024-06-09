@@ -68,7 +68,7 @@ def start_scheduler():
     scheduler.add_job(job, 'cron', day_of_week='sun', hour=13)
     scheduler.add_job(job, 'cron', day_of_week='sun', hour=14)
     scheduler.add_job(job, 'cron', day_of_week='sun', hour=15)
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=21, minute=10)
+    scheduler.add_job(job, 'cron', day_of_week='sun', hour=21, minute=23)
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
