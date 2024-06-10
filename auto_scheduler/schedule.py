@@ -1,7 +1,10 @@
 import logging
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from queue_manager import upload_queue, save_queue
 from upload import upload_video
+import json
+import os
+import threading
 
 def job():
     if upload_queue.empty():
@@ -16,60 +19,47 @@ def job():
         logging.info(f"Video '{video.title}' uploaded successfully.")
         save_queue()
     else:
-        print("Faied to upload video")
+        print("Failed to upload video")
         logging.error(f"Failed to upload video '{video.title}'.")
-        # Optionally re-add to queue
         upload_queue.put(video)
 
+def load_schedule():
+    if not os.path.exists("schedule.json"):
+        return {}
+    with open("schedule.json", "r") as f:
+        return json.load(f)
 
 def start_scheduler():
-    scheduler = BlockingScheduler()
-    # Monday
-    scheduler.add_job(job, 'cron', day_of_week='mon', hour=18)
-    scheduler.add_job(job, 'cron', day_of_week='mon', hour=19)
-    scheduler.add_job(job, 'cron', day_of_week='mon', hour=20)
-    scheduler.add_job(job, 'cron', day_of_week='mon', hour=21)
+    scheduler = BackgroundScheduler()
+    update_scheduler(scheduler)  # Initial setup
+    
+    # Start a separate thread to periodically check for updates in the schedule
+    def schedule_updater():
+        while True:
+            update_scheduler(scheduler)
+            # Check every hour for updates (adjust the time interval as needed)
+            print("Running")
+            threading.Event().wait(10)
 
-    # Tuesday
-    scheduler.add_job(job, 'cron', day_of_week='tue', hour=18)
-    scheduler.add_job(job, 'cron', day_of_week='tue', hour=19)
-    scheduler.add_job(job, 'cron', day_of_week='tue', hour=20)
-    scheduler.add_job(job, 'cron', day_of_week='tue', hour=21)
-    scheduler.add_job(job, 'cron', day_of_week='tue', hour=22)
-
-    # Wednesday
-    scheduler.add_job(job, 'cron', day_of_week='wed', hour=18)
-    scheduler.add_job(job, 'cron', day_of_week='wed', hour=19)
-    scheduler.add_job(job, 'cron', day_of_week='wed', hour=20)
-    scheduler.add_job(job, 'cron', day_of_week='wed', hour=21)
-    scheduler.add_job(job, 'cron', day_of_week='wed', hour=22)
-
-    # Thursday
-    scheduler.add_job(job, 'cron', day_of_week='thu', hour=18)
-    scheduler.add_job(job, 'cron', day_of_week='thu', hour=19)
-    scheduler.add_job(job, 'cron', day_of_week='thu', hour=20)
-    scheduler.add_job(job, 'cron', day_of_week='thu', hour=21)
-
-    # Friday
-    scheduler.add_job(job, 'cron', day_of_week='fri', hour=16)
-    scheduler.add_job(job, 'cron', day_of_week='fri', hour=17)
-    scheduler.add_job(job, 'cron', day_of_week='fri', hour=18)
-    scheduler.add_job(job, 'cron', day_of_week='fri', hour=19)
-    scheduler.add_job(job, 'cron', day_of_week='fri', hour=20)
-
-    # Saturday
-    scheduler.add_job(job, 'cron', day_of_week='sat', hour=15)
-    scheduler.add_job(job, 'cron', day_of_week='sat', hour=16)
-    scheduler.add_job(job, 'cron', day_of_week='sat', hour=17)
-    scheduler.add_job(job, 'cron', day_of_week='sat', hour=18)
-
-    # Sunday
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=12)
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=13)
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=14)
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=15)
-    scheduler.add_job(job, 'cron', day_of_week='sun', hour=21, minute=23)
+    # Start the schedule updater thread
+    updater_thread = threading.Thread(target=schedule_updater, daemon=True)
+    updater_thread.start()
+    
+    scheduler.start()
     try:
-        scheduler.start()
+        while True:
+            pass  # Keep the main thread alive
     except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
         print("Scheduler stopped.")
+
+def update_scheduler(scheduler):
+    scheduler.remove_all_jobs()
+    schedule = load_schedule()
+    for day, times in schedule.items():
+        for time in times:
+            hour, minute = map(int, time.split(":"))
+            scheduler.add_job(job, 'cron', day_of_week=day[:3].lower(), hour=hour, minute=minute)
+
+if __name__ == "__main__":
+    start_scheduler()
