@@ -6,6 +6,7 @@ from queue_manager import upload_queue, save_queue, load_queue, delete_video
 from video import Video
 from schedule import start_scheduler
 import threading
+import json
 
 class VideoSchedulerApp:
     def __init__(self, root):
@@ -24,7 +25,7 @@ class VideoSchedulerApp:
         self.listBoxLabel = ttk.Label(self.video_frame, text="Video Queue")
         self.listBoxLabel.pack(padx=25, pady=10)
 
-        self.listbox = tk.Listbox(self.video_frame, selectmode=tk.SINGLE)
+        self.listbox = tk.Listbox(self.video_frame, selectmode=tk.SINGLE, bg='#333333', fg='#ffffff', selectbackground='#666666', font=('Helvetica', 12))
         self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
 
         self.scrollbar = ttk.Scrollbar(self.video_frame, command=self.listbox.yview)
@@ -39,21 +40,60 @@ class VideoSchedulerApp:
         self.scheduleLabel = ttk.Label(self.schedule_frame, text="Schedule")
         self.scheduleLabel.pack(side=tk.TOP, padx=25, pady=10)
 
-        self.schedule_text = tk.Text(self.schedule_frame)
-        self.schedule_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
+        self.tree_frame = ttk.Frame(self.schedule_frame)
+        self.tree_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
+
+        self.tree = ttk.Treeview(self.tree_frame, columns=("Day", "Time"), show="headings")
+        self.tree.heading("Day", text="Day")
+        self.tree.heading("Time", text="Time")
+        self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+
+        self.scrollbar_tree = ttk.Scrollbar(self.tree_frame, command=self.tree.yview)
+        self.scrollbar_tree.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.config(yscrollcommand=self.scrollbar_tree.set)
+
+        self.input_frame = ttk.Frame(self.schedule_frame)
+        self.input_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
+
+        self.day_label = ttk.Label(self.input_frame, text="Day")
+        self.day_label.pack(pady=5)
+        self.day_var = tk.StringVar()
+        self.day_combobox = ttk.Combobox(self.input_frame, textvariable=self.day_var)
+        self.day_combobox['values'] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.day_combobox.pack(pady=5)
+
+        self.hour_label = ttk.Label(self.input_frame, text="Hour")
+        self.hour_label.pack(pady=5)
+        self.hour_var = tk.StringVar()
+        self.hour_entry = ttk.Entry(self.input_frame, textvariable=self.hour_var)
+        self.hour_entry.pack(pady=5)
+
+        self.minute_label = ttk.Label(self.input_frame, text="Minute")
+        self.minute_label.pack(pady=5)
+        self.minute_var = tk.StringVar()
+        self.minute_entry = ttk.Entry(self.input_frame, textvariable=self.minute_var)
+        self.minute_entry.pack(pady=5)
+
+        self.add_time_button = ttk.Button(self.input_frame, text="Add Time", command=self.add_time)
+        self.add_time_button.pack(pady=5)
+
+        self.remove_time_button = ttk.Button(self.input_frame, text="Remove Time", command=self.remove_time)
+        self.remove_time_button.pack(pady=5)
+
+        self.load_schedule()
 
         # Frame for Buttons Section
         self.button_frame = ttk.Frame(self.frame)
         self.button_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.add_button = ttk.Button(self.button_frame, text="Add Video", command=self.add_video)
-        self.add_button.pack(side=tk.LEFT)
+        self.add_button.pack(side=tk.LEFT, padx=5)
 
         self.edit_button = ttk.Button(self.button_frame, text="Edit Video", command=self.edit_video)
-        self.edit_button.pack(side=tk.LEFT)
+        self.edit_button.pack(side=tk.LEFT, padx=5)
 
         self.delete_button = ttk.Button(self.button_frame, text="Delete Video", command=self.delete_video)
-        self.delete_button.pack(side=tk.LEFT)
+        self.delete_button.pack(side=tk.LEFT, padx=5)
 
         self.load_queue()
 
@@ -146,6 +186,51 @@ class VideoSchedulerApp:
         self.refresh_listbox()
         messagebox.showinfo("Video Deleted", "This video has been removed from the queue.")
 
+    def add_time(self):
+        day = self.day_var.get()
+        hour = self.hour_var.get()
+        minute = self.minute_var.get()
+        if not day or not hour or not minute:
+            messagebox.showerror("Error", "All fields must be filled out.")
+            return
+
+        time = f"{hour.zfill(2)}:{minute.zfill(2)}"
+        self.tree.insert('', 'end', values=(day, time))
+        self.save_schedule()
+
+    def remove_time(self):
+        selected_item = self.tree.selection()
+        if selected_item:
+            self.tree.delete(selected_item)
+            self.save_schedule()
+        else:
+            messagebox.showerror("Error", "No time selected.")
+
+    def save_schedule(self):
+        schedule = {}
+        for row in self.tree.get_children():
+            day, time = self.tree.item(row)['values']
+            if day not in schedule:
+                schedule[day] = []
+            schedule[day].append(time)
+        
+        with open("schedule.json", "w") as f:
+            json.dump(schedule, f, indent=4)
+
+    def load_schedule(self):
+        try:
+            with open("schedule.json", "r") as f:
+                schedule = json.load(f)
+                for day, times in schedule.items():
+                    for time in times:
+                        self.tree.insert('', 'end', values=(day, time))
+        except FileNotFoundError:
+            pass
+
+    def update_scheduler(self):
+        # Notify the scheduler thread to update
+        self.scheduler_event.set()
+
     def on_start_drag(self, event):
         self.drag_data["index"] = self.listbox.index("@%s,%s" % (event.x, event.y))
 
@@ -178,10 +263,19 @@ class VideoSchedulerApp:
     def save_queue_order(self):
         save_queue()
 
+    def refresh_listbox_threadsafe(self):
+        # Use the Tkinter after method to refresh the listbox from the main thread
+        self.root.after(0, self.refresh_listbox)
+
 if __name__ == "__main__":
-    start_scheduler()
-    print("Starting Scheduler...")
     root = tk.Tk()
     app = VideoSchedulerApp(root)
     sv_ttk.set_theme("dark")
+
+    # Start the scheduler in a separate thread
+    scheduler_thread = threading.Thread(target=start_scheduler, args=(app,))
+    scheduler_thread.daemon = True  # This ensures the thread will exit when the main program exits
+    scheduler_thread.start()
+    print("Starting Scheduler...")
+
     root.mainloop()

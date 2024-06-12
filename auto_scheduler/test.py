@@ -25,13 +25,16 @@ class VideoSchedulerApp:
         self.listBoxLabel = ttk.Label(self.video_frame, text="Video Queue")
         self.listBoxLabel.pack(padx=25, pady=10)
 
-        self.listbox = tk.Listbox(self.video_frame, selectmode=tk.SINGLE)
-        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
+        self.tree_queue = ttk.Treeview(self.video_frame, columns=("Title", "Day", "Hour", "Minute"), show="headings")
+        self.tree_queue.heading("Title", text="Title")
+        self.tree_queue.heading("Day", text="Day")
+        self.tree_queue.heading("Hour", text="Hour")
+        self.tree_queue.heading("Minute", text="Minute")
+        self.tree_queue.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=25, pady=10)
 
-        self.scrollbar = ttk.Scrollbar(self.video_frame, command=self.listbox.yview)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.listbox.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar_queue = ttk.Scrollbar(self.video_frame, command=self.tree_queue.yview)
+        self.scrollbar_queue.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree_queue.config(yscrollcommand=self.scrollbar_queue.set)
 
         # Frame for Schedule Section
         self.schedule_frame = ttk.Frame(self.frame, borderwidth=2, relief="groove")
@@ -43,9 +46,10 @@ class VideoSchedulerApp:
         self.tree_frame = ttk.Frame(self.schedule_frame)
         self.tree_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
 
-        self.tree = ttk.Treeview(self.tree_frame, columns=("Day", "Time"), show="headings")
+        self.tree = ttk.Treeview(self.tree_frame, columns=("Day", "Hour", "Minute"), show="headings")
         self.tree.heading("Day", text="Day")
-        self.tree.heading("Time", text="Time")
+        self.tree.heading("Hour", text="Hour")
+        self.tree.heading("Minute", text="Minute")
         self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
         self.scrollbar_tree = ttk.Scrollbar(self.tree_frame, command=self.tree.yview)
@@ -55,20 +59,24 @@ class VideoSchedulerApp:
         self.input_frame = ttk.Frame(self.schedule_frame)
         self.input_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=10)
 
+        self.day_label = ttk.Label(self.input_frame, text="Day")
+        self.day_label.pack(pady=5)
         self.day_var = tk.StringVar()
         self.day_combobox = ttk.Combobox(self.input_frame, textvariable=self.day_var)
         self.day_combobox['values'] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         self.day_combobox.pack(pady=5)
 
+        self.hour_label = ttk.Label(self.input_frame, text="Hour")
+        self.hour_label.pack(pady=5)
         self.hour_var = tk.StringVar()
         self.hour_entry = ttk.Entry(self.input_frame, textvariable=self.hour_var)
         self.hour_entry.pack(pady=5)
-        self.hour_entry.insert(0, "HH")
 
+        self.minute_label = ttk.Label(self.input_frame, text="Minute")
+        self.minute_label.pack(pady=5)
         self.minute_var = tk.StringVar()
         self.minute_entry = ttk.Entry(self.input_frame, textvariable=self.minute_var)
         self.minute_entry.pack(pady=5)
-        self.minute_entry.insert(0, "MM")
 
         self.add_time_button = ttk.Button(self.input_frame, text="Add Time", command=self.add_time)
         self.add_time_button.pack(pady=5)
@@ -83,32 +91,53 @@ class VideoSchedulerApp:
         self.button_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.add_button = ttk.Button(self.button_frame, text="Add Video", command=self.add_video)
-        self.add_button.pack(side=tk.LEFT)
+        self.add_button.pack(side=tk.LEFT, padx=5)
 
         self.edit_button = ttk.Button(self.button_frame, text="Edit Video", command=self.edit_video)
-        self.edit_button.pack(side=tk.LEFT)
+        self.edit_button.pack(side=tk.LEFT, padx=5)
 
         self.delete_button = ttk.Button(self.button_frame, text="Delete Video", command=self.delete_video)
-        self.delete_button.pack(side=tk.LEFT)
+        self.delete_button.pack(side=tk.LEFT, padx=5)
 
         self.load_queue()
 
-        # Add drag-and-drop support
-        self.listbox.bind("<Button-1>", self.on_start_drag)
-        self.listbox.bind("<B1-Motion>", self.on_drag_motion)
-        self.listbox.bind("<ButtonRelease-1>", self.on_drop)
-
-        self.drag_data = {"index": None}
-
     def load_queue(self):
         load_queue()
-        self.refresh_listbox()
+        self.refresh_queue()
 
-    def refresh_listbox(self):
-        self.listbox.delete(0, tk.END)
+    def refresh_queue(self):
+        for item in self.tree_queue.get_children():
+            self.tree_queue.delete(item)
         queue_list = list(upload_queue.queue)
-        for video in queue_list:
-            self.listbox.insert(tk.END, video.title)
+        schedule = self.get_sorted_schedule()
+        for i, video in enumerate(queue_list):
+            if i < len(schedule):
+                day, hour, minute = schedule[i]
+            else:
+                day, hour, minute = "N/A", "00", "00"
+            self.tree_queue.insert('', 'end', values=(video.title, day, hour, minute))
+
+    def get_sorted_schedule(self):
+        try:
+            with open("schedule.json", "r") as f:
+                schedule = json.load(f)
+            sorted_schedule = []
+            for day, times in schedule.items():
+                for time in times:
+                    parts = time.split(':')
+                    if len(parts) == 2:
+                        hour, minute = parts
+                        sorted_schedule.append((day, hour.zfill(2), minute.zfill(2)))
+            sorted_schedule.sort(key=lambda x: (self.get_day_index(x[0]), int(x[1]), int(x[2])))
+            return sorted_schedule
+        except FileNotFoundError:
+            return []
+
+    def get_day_index(self, day):
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        if day in days:
+            return days.index(day)
+        return 0
 
     def add_video(self):
         file_path = filedialog.askopenfilename(
@@ -134,22 +163,28 @@ class VideoSchedulerApp:
         if not description:
             messagebox.showerror("Error", "Video description is required.")
             return
-        
+
         video = Video(file_path, title, tags, description)
         upload_queue.put(video)
         save_queue()
-        self.refresh_listbox()
+        self.refresh_queue()
         messagebox.showinfo("Video Added", "This video has been added to the queue.")
 
     def edit_video(self):
-        selected_index = self.listbox.curselection()
-        if not selected_index:
+        selected_item = self.tree_queue.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No video selected.")
             return
 
-        index = selected_index[0]
+        item = self.tree_queue.item(selected_item)
+        values = item['values']
+        title = values[0]
+
         queue_list = list(upload_queue.queue)
-        video = queue_list[index]
+        video = next((v for v in queue_list if v.title == title), None)
+        if not video:
+            messagebox.showerror("Error", "Video not found.")
+            return
 
         file_path = simpledialog.askstring("Input", "Edit the video file path:", initialvalue=video.file_path)
         title = simpledialog.askstring("Input", "Edit the video title:", initialvalue=video.title)
@@ -166,20 +201,30 @@ class VideoSchedulerApp:
             for vid in queue_list:
                 upload_queue.put(vid)
             save_queue()
-            self.refresh_listbox()
+            self.refresh_queue()
         else:
             messagebox.showerror("Error", "All fields must be filled out.")
-        messagebox.showinfo("Video Edited", "This video has been edited in the queue.")
+        messagebox.showinfo("Video Edited", "This video has been edited.")
 
     def delete_video(self):
-        selected_index = self.listbox.curselection()
-        if not selected_index:
+        selected_item = self.tree_queue.selection()
+        if not selected_item:
             messagebox.showerror("Error", "No video selected.")
             return
 
-        index = selected_index[0]
+        item = self.tree_queue.item(selected_item)
+        values = item['values']
+        title = values[0]
+
+        queue_list = list(upload_queue.queue)
+        video = next((v for v in queue_list if v.title == title), None)
+        if not video:
+            messagebox.showerror("Error", "Video not found.")
+            return
+
+        index = queue_list.index(video)
         delete_video(index)
-        self.refresh_listbox()
+        self.refresh_queue()
         messagebox.showinfo("Video Deleted", "This video has been removed from the queue.")
 
     def add_time(self):
@@ -190,26 +235,27 @@ class VideoSchedulerApp:
             messagebox.showerror("Error", "All fields must be filled out.")
             return
 
-        time = f"{hour.zfill(2)}:{minute.zfill(2)}"
-        self.tree.insert('', 'end', values=(day, time))
+        self.tree.insert('', 'end', values=(day, hour.zfill(2), minute.zfill(2)))
         self.save_schedule()
+        self.refresh_queue()
 
     def remove_time(self):
         selected_item = self.tree.selection()
         if selected_item:
             self.tree.delete(selected_item)
             self.save_schedule()
+            self.refresh_queue()
         else:
             messagebox.showerror("Error", "No time selected.")
 
     def save_schedule(self):
         schedule = {}
         for row in self.tree.get_children():
-            day, time = self.tree.item(row)['values']
+            day, hour, minute = self.tree.item(row)['values']
             if day not in schedule:
                 schedule[day] = []
-            schedule[day].append(time)
-        
+            schedule[day].append(f"{hour}:{minute}")
+
         with open("schedule.json", "w") as f:
             json.dump(schedule, f, indent=4)
 
@@ -219,52 +265,22 @@ class VideoSchedulerApp:
                 schedule = json.load(f)
                 for day, times in schedule.items():
                     for time in times:
-                        self.tree.insert('', 'end', values=(day, time))
+                        parts = time.split(':')
+                        if len(parts) == 2:
+                            hour, minute = parts
+                            self.tree.insert('', 'end', values=(day, hour.zfill(2), minute.zfill(2)))
         except FileNotFoundError:
             pass
 
-    def update_scheduler(self):
-        # Notify the scheduler thread to update
-        self.scheduler_event.set()
-
-    def on_start_drag(self, event):
-        self.drag_data["index"] = self.listbox.index("@%s,%s" % (event.x, event.y))
-
-    def on_drag_motion(self, event):
-        new_index = self.listbox.index("@%s,%s" % (event.x, event.y))
-        if new_index != self.drag_data["index"]:
-            self.swap_items(self.drag_data["index"], new_index)
-            self.drag_data["index"] = new_index
-
-    def on_drop(self, event):
-        self.drag_data["index"] = None
-        self.save_queue_order()
-
-    def swap_items(self, index1, index2):
-        if index1 < 0 or index2 < 0:
-            return
-
-        queue_list = list(upload_queue.queue)
-        queue_list[index1], queue_list[index2] = queue_list[index2], queue_list[index1]
-
-        self.listbox.delete(index1)
-        self.listbox.insert(index1, queue_list[index1].title)
-        self.listbox.delete(index2)
-        self.listbox.insert(index2, queue_list[index2].title)
-
-        upload_queue.queue.clear()
-        for video in queue_list:
-            upload_queue.put(video)
-
-    def save_queue_order(self):
-        save_queue()
-
 if __name__ == "__main__":
-    scheduler_thread = threading.Thread(target=start_scheduler)
-    scheduler_thread.daemon = True  # This ensures the thread will exit when the main program exits
-    scheduler_thread.start()
-    print("Starting Scheduler...")
     root = tk.Tk()
     app = VideoSchedulerApp(root)
     sv_ttk.set_theme("dark")
+
+    # Start the scheduler in a separate thread
+    scheduler_thread = threading.Thread(target=start_scheduler, args=(app,))
+    scheduler_thread.daemon = True  # This ensures the thread will exit when the main program exits
+    scheduler_thread.start()
+    print("Starting Scheduler...")
+
     root.mainloop()

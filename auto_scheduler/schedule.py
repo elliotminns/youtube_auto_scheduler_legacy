@@ -6,7 +6,7 @@ import json
 import os
 import threading
 
-def job():
+def job(app):
     if upload_queue.empty():
         print("No Videos in Queue")
         logging.info("No videos in the queue.")
@@ -18,6 +18,8 @@ def job():
         print(f"Video '{video.title}' uploaded successfully.")
         logging.info(f"Video '{video.title}' uploaded successfully.")
         save_queue()
+        # Refresh the listbox to reflect the changes
+        app.refresh_listbox_threadsafe()
     else:
         print("Failed to upload video")
         logging.error(f"Failed to upload video '{video.title}'.")
@@ -29,16 +31,15 @@ def load_schedule():
     with open("schedule.json", "r") as f:
         return json.load(f)
 
-def start_scheduler():
+def start_scheduler(app):
     scheduler = BackgroundScheduler()
-    update_scheduler(scheduler)  # Initial setup
+    update_scheduler(scheduler, app)  # Initial setup
     
     # Start a separate thread to periodically check for updates in the schedule
     def schedule_updater():
         while True:
-            update_scheduler(scheduler)
+            update_scheduler(scheduler, app)
             # Check every hour for updates (adjust the time interval as needed)
-            print("Running")
             threading.Event().wait(10)
 
     # Start the schedule updater thread
@@ -53,13 +54,14 @@ def start_scheduler():
         scheduler.shutdown()
         print("Scheduler stopped.")
 
-def update_scheduler(scheduler):
+def update_scheduler(scheduler, app):
     scheduler.remove_all_jobs()
     schedule = load_schedule()
     for day, times in schedule.items():
         for time in times:
             hour, minute = map(int, time.split(":"))
-            scheduler.add_job(job, 'cron', day_of_week=day[:3].lower(), hour=hour, minute=minute)
+            scheduler.add_job(job, 'cron', day_of_week=day[:3].lower(), hour=hour, minute=minute, args=[app])
 
 if __name__ == "__main__":
-    start_scheduler()
+    app = None  # Use this if you need to test start_scheduler without the GUI
+    start_scheduler(app)
