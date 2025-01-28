@@ -10,7 +10,7 @@ scopes = "https://www.googleapis.com/auth/youtube.upload"  # Define OAuth scopes
 
 api_service_name = "youtube"  # Define the API service name
 api_version = "v3"  # Define the API version
-client_secrets_file = "auto_scheduler/resources/credentials.json"  # Path to the client secrets file containing OAuth 2.0 information
+client_secrets_file = r"C:\Users\Elliot\Desktop\youtube auto scheduler\youtube_auto_scheduler\auto_scheduler\resources\credentials.json"  # Path to the client secrets file containing OAuth 2.0 information
 
 # Function to check if credentials are authorized
 def is_authorized(credentials):
@@ -23,7 +23,7 @@ def authorize():
     # Start the OAuth 2.0 Authorization Flow
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
         client_secrets_file, scopes)
-    credentials = flow.run_local_server()  # Run local server to handle OAuth redirect
+    credentials = flow.run_local_server(access_type="offline", prompt="consent")  # Run local server to handle OAuth redirect
     
     save_credentials(credentials)  # Save the obtained credentials
     
@@ -31,7 +31,7 @@ def authorize():
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, credentials=credentials)
     
-    print('New Credentials')  # Print confirmation message
+    print(credentials)  # Print confirmation message
     return youtube  # Return the YouTube API client
 
 # Function to refresh expired credentials
